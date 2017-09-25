@@ -1,0 +1,92 @@
+/************************************************************
+************************************************************/
+■Blend basic
+	Fbo(or Screen)上の、あるpixelの値(r, g, b, and also a)は、最後にdrawしたobjectのaで(Base側のaは使用せずに)上書きされる。
+	注意すべきは、結果のFbo上で、aの値も同じ式で更新される点.
+	Fbo.draw()の時、Fboのaを使って、mixが成される.
+	
+	Blend mode (aは、"New"の値)
+		OF_BLENDMODE_ALPHA
+			val = New * (a/255) + Base * (1 - a/255)
+			
+		OF_BLENDMODE_ADD
+			val = New * (a/255) + Base
+
+	
+	
+	上書き側のAlphaでmixするので、rgbについては、所望の動作となる.
+	結果のFbo上で、Alphaのみ、Blend結果が複雑で単純には、controlできない.
+	そこで、rgbはFbo上でmixしても良いが、
+	最終的にFboをSceenにdrawする時は、Fbo全体のAlphaとして、値を別途 与えるのがいいと思われる.
+
+	
+■Fbo type x { ofEnableAlphaBlending()/ ofDisableAlphaBlending() }
+ 											mix		alpha	note
+	------------------------------------------------------------------------------------------------------------------										 
+	GL_RGB	|	ofEnableAlphaBlending()		o		x		fbo上では、r, g, bがalpha mixされる。mix後、alphaは保持されない(255になる)。
+			|	ofDisableAlphaBlending()	x		x		mixされない.alpha = 255.
+	GL_RGBA	|	ofEnableAlphaBlending()		o		o		
+			|	ofDisableAlphaBlending		x		o		fbo上ではmixされないが、alphaは保持されるので、
+															その後、fboをofEnableAlphaBlending()でdrawすると、
+															背景とalpha blendされる。
+															
+															
+	fbo.allocate( ofGetWidth(), ofGetHeight() , GL_RGBA);
+	としてfbo上でmixし、
+		ofEnableAlphaBlending();
+		ofEnableBlendMode(OF_BLENDMODE_ADD);
+		// ofEnableBlendMode(OF_BLENDMODE_ALPHA);
+		
+		fbo.draw(0, 0);
+	とすると、fboへの描き込み、screenへのfbo(with alpha)描き込み
+	の2回、alphaが効いてしまう。
+
+
+■shader x { ofEnableAlphaBlending()/ ofDisableAlphaBlending() }
+	aの値自体は、shaderに渡される。
+	
+	例えば、
+		#version 120
+		#extension GL_ARB_texture_rectangle : enable
+		#extension GL_EXT_gpu_shader4 : enable
+		
+		uniform sampler2DRect texture0;
+		
+		void main(){
+			vec4 color = gl_Color;
+			// color.a = 0.5;
+			color.g = color.a;
+			
+			gl_FragColor = color;
+		}
+		
+	とすると、ofDisableAlphaBlending()されていても、g 成分が変更される。
+	
+		CPU -> GPU -> Screen(or Fbo)
+	で、Screen(of Fbo)に反映される時に、aによるBlendingが成されない、と言うこと。
+
+
+■Fbo x Blending
+	case 1
+		Fbo上に、partsに半透過などのaがない3D modelをdrawする.ただし、背景はa=0として、これをScreenに重ね描きしたい
+			Fbo		:	ofDisableAlphaBlending()
+			Screen	:	ofEnableAlphaBlending()
+	
+	case 2
+		Fbo上で黒Baseに「重なって光る」particleを描き、これをScreenに重ね描きしたい
+		
+		solution 1
+			Fbo		:	ofEnableAlphaBlending()
+						ofEnableBlendMode(OF_BLENDMODE_ADD);
+
+			Screen	:	ofDisableAlphaBlending()
+						とした上で、
+							Base, Fbo, 固定 a(pixelごとでなく、Fbo全体の a )
+							->shader
+						として、shader側でRGB値を直接変更(a を触ってもofDisableAlphaBlending()中なので反映されない)。
+
+		solution 2
+			Fboを使わないで、直接sceenに描画するよう、source上の手順を整理.
+
+
+
