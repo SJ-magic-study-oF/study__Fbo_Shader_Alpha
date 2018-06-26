@@ -1,8 +1,8 @@
 /************************************************************
 ************************************************************/
 ■Blend basic
-	Fbo(or Screen)上の、あるpixelの値(r, g, b, and also a)は、最後にdrawしたobjectのaで(Base側のaは使用せずに)上書きされる。
-	注意すべきは、結果のFbo上で、aの値も同じ式で更新される点.
+	Fbo(or Screen)上の、あるpixelの値(r, g, b, and also a)は、ofDisableAlphaBlendingの場合、最後にdrawしたobjectのaで(Base側のaは使用せずに)上書きされる。
+	ofEnableAlphaBlendingの場合はmixされるが、注意すべきは、結果のFbo上で、aの値も同じ式で更新される点.
 	Fbo.draw()の時、Fboのaを使って、mixが成される.
 	
 	Blend mode (aは、"New"の値)
